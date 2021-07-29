@@ -42,24 +42,78 @@ namespace BaldiCanUseItems
     }
 
 
-    [HarmonyPatch(typeof(PlayerManager))]
-    [HarmonyPatch("Awake")]
-    class PlayerManAwakePatch
-    {
-        static bool Prefix(PlayerManager __instance)
-        {
-            return __instance.pc != null;
-        }
-    }
+	[HarmonyPatch(typeof(PlayerManager))]
+	[HarmonyPatch("Awake")]
+	class PlayerManAwakePatch
+	{
+		static bool Prefix(PlayerManager __instance)
+		{
+			return __instance.tag == "Player";
+		}
+	}
 
-    [HarmonyPatch(typeof(PlayerManager))]
+	[HarmonyPatch(typeof(PlayerManager))]
+	[HarmonyPatch("RuleBreak")]
+	class PlayerManRuleBreakPatch
+	{
+		private static readonly MethodInfo _SetGuilt = AccessTools.Method(typeof(NPC), "SetGuilt");
+		static bool Prefix(PlayerManager __instance, ref string rule, ref float linger)
+		{
+			if (__instance.tag == "Player") return true;
+			_SetGuilt.Invoke(NewBaldAI.Instance.MyBaldi,new object[2] { linger, rule });
+
+			return false;
+		}
+	}
+
+	[HarmonyPatch(typeof(PlayerMovement))]
+	[HarmonyPatch("Awake")]
+	class PlayerMoveAwakePatch
+	{
+		static bool Prefix(PlayerMovement __instance)
+		{
+			return __instance.pm != null;
+		}
+	}
+
+	[HarmonyPatch(typeof(PlayerMovement))]
+	[HarmonyPatch("Update")]
+	class PlayerMoveUpdatePatch
+	{
+		static bool Prefix(PlayerMovement __instance)
+		{
+			return __instance.pm != null;
+		}
+	}
+
+	[HarmonyPatch(typeof(PlayerClick))]
+	[HarmonyPatch("Awake")]
+	class PlayerClickAwakePatch
+	{
+		static bool Prefix(PlayerClick __instance)
+		{
+			return __instance.pm != null;
+		}
+	}
+
+	[HarmonyPatch(typeof(PlayerClick))]
+	[HarmonyPatch("Update")]
+	class PlayerClickUpdatePatch
+	{
+		static bool Prefix(PlayerClick __instance)
+		{
+			return __instance.pm != null;
+		}
+	}
+
+	[HarmonyPatch(typeof(PlayerManager))]
     [HarmonyPatch("Update")]
     class PlayerManUpdatePatch
     {
         static bool Prefix(PlayerManager __instance)
         {
-            return __instance.pc != null;
-        }
+            return __instance.tag == "Player";
+		}
     }
 
     [HarmonyPatch(typeof(GameCamera))]

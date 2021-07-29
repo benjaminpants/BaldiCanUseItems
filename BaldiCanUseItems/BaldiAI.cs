@@ -26,9 +26,9 @@ namespace BaldiCanUseItems
 
         private static readonly FieldInfo _pauseTime = AccessTools.Field(typeof(Baldi), "pauseTime");
 
-        private static readonly FieldInfo _am = AccessTools.Field(typeof(PlayerManager), "am");
+		private static readonly FieldInfo _am = AccessTools.Field(typeof(PlayerManager), "am");
 
-        private static readonly FieldInfo _cameras = AccessTools.Field(typeof(CoreGameManager), "cameras");
+		private static readonly FieldInfo _cameras = AccessTools.Field(typeof(CoreGameManager), "cameras");
 
         public static NewBaldAI Instance;
 
@@ -45,9 +45,11 @@ namespace BaldiCanUseItems
 
         public float DisplayItemTimer;
 
-        public float BootsTimer;
+		public float BootsTimer;
 
-        public bool HasBootsOn = true;
+		public float UnknownLocalTimer;
+
+		public bool HasBootsOn = true;
 
         public PlayerManager FakePlayer;
 
@@ -67,7 +69,7 @@ namespace BaldiCanUseItems
             AddItem(Items.ZestyBar,5);
             AddItem(Items.GrapplingHook);
             AddItem(Items.PrincipalWhistle,5);
-            AddItem(Items.Scissors,2);
+            AddItem(Items.Bsoda);
             ItemDisplayerObject = GameObject.Instantiate(Resources.FindObjectsOfTypeAll<Pickup>()[0].itemSprite.gameObject);
             ItemDisplayerObject.transform.parent = MyBaldi.transform;
             ItemDisplayer = ItemDisplayerObject.GetComponent<SpriteRenderer>();
@@ -75,21 +77,29 @@ namespace BaldiCanUseItems
             GameObject.Destroy(ItemDisplayer.GetComponent<PickupBob>());
             ItemDisplayer.enabled = false;
 
-
-
-            FakePlayer = new GameObject().AddComponent<PlayerManager>();
+			//this creates a fake "PlayerManager", which allows me to use already existing item code for Baldi, I disable all the actual functionality of these classes in StupidPatches.cs
+            FakePlayer = MyBaldi.gameObject.AddComponent<PlayerManager>();
             FakePlayer.playerNumber = 1;
             FakePlayer.ec = MyBaldi.ec;
-            FakePlayer.transform.parent = MyBaldi.transform;
-            FakePlayer.transform.localPosition = new Vector3(0f,0f,0f);
             FakePlayer.itm = new GameObject().AddComponent<ItemManager>();
+			FakePlayer.pc = new GameObject().AddComponent<PlayerClick>();
             _am.SetValue(FakePlayer,MyBaldi.GetComponent<ActivityModifier>());
 
+			//A fake Gamecamera with no cameras assigned.
             GameCamera cam = new GameObject().AddComponent<GameCamera>();
-            cam.transform.parent = MyBaldi.transform;
-            (_cameras.GetValue(Singleton<CoreGameManager>.Instance) as GameCamera[])[1] = cam;
+			cam.transform.parent = MyBaldi.transform;
+			(_cameras.GetValue(Singleton<CoreGameManager>.Instance) as GameCamera[])[1] = cam;
 
-            Singleton<CoreGameManager>.Instance.disablePause = false;
+			//fake playermovement with its only purpose is being to redirect items to use Baldi's movement modifier
+			PlayerMovement pm = new GameObject().AddComponent<PlayerMovement>();
+			pm.transform.parent = MyBaldi.transform;
+			pm.am = MyBaldi.GetComponent<ActivityModifier>();
+			FakePlayer.plm = pm;
+
+
+
+
+			Singleton<CoreGameManager>.Instance.disablePause = false;
 
             UnityEngine.Debug.Log("NewBaldi AI success!");
         }
@@ -246,24 +256,62 @@ namespace BaldiCanUseItems
 
         private static readonly FieldInfo _item = AccessTools.Field(typeof(SodaMachine), "item");
 
-        private static readonly FieldInfo _usesLeft = AccessTools.Field(typeof(SodaMachine), "usesLeft");
+		private static readonly FieldInfo _anger = AccessTools.Field(typeof(Baldi), "anger");
+
+		private static readonly FieldInfo _usesLeft = AccessTools.Field(typeof(SodaMachine), "usesLeft");
 
         static bool Prefix(Baldi __instance, ref bool ___controlOverride, ref Navigator ___navigator, ref bool ___eatingApple, ref bool ___paused, ref float ___speed, ref float ___nextSlapDistance, ref float ___extraAnger, ref AudioManager ___audMan, ref WeightedSoundObject[] ___eatSounds)
         {
-            if (!___controlOverride && !___navigator.HasDestination)
+            if (!___controlOverride)
             {
 
                 if ((bool)_HasSoundLocation.Invoke(__instance, new object[0]))
                 {
-                    _UpdateSoundTarget.Invoke(__instance, new object[0]);
+					NewBaldAI.Instance.UnknownLocalTimer = 0f;
+					if (!___navigator.HasDestination)
+					{
+						_UpdateSoundTarget.Invoke(__instance, new object[0]);
+					}
                 }
                 else
                 {
-                    ___navigator.WanderRandom();
+					NewBaldAI.Instance.UnknownLocalTimer += Time.deltaTime * __instance.ec.NpcTimeScale;
+					if (!___navigator.HasDestination)
+					{
+						___navigator.WanderRandom();
+					}
+
                 }
 
             }
 
+			if (NewBaldAI.Instance.UnknownLocalTimer > 15f) //please help i have literally no idea where the player is yolo
+			{
+				NewBaldAI.Instance.UnknownLocalTimer = 0f;
+				if (NewBaldAI.Instance.UseIfExists(Items.Teleporter))
+				{
+					Item tele = GameObject.Instantiate<Item>(BaldiUsableItems.ItemStuffs.Find(x => x.itemType == Items.Teleporter).item);
+					tele.Use(NewBaldAI.Instance.FakePlayer);
+				}
+			}
+
+
+
+			if (NewBaldAI.Instance.CurrentVisiblePlayer != null)
+			{
+				List<TileController> til = new List<TileController>();
+				__instance.ec.GetNavNeighbors(__instance.ec.ClosestTileFromPos((new IntVector2((int)(NewBaldAI.Instance.CurrentVisiblePlayer.transform.position.x / 10f), (int)(NewBaldAI.Instance.CurrentVisiblePlayer.transform.position.y / 10f)))),til, PathType.Nav);
+				int neighbors = til.Count;
+				if (neighbors > 2 && (((float)_anger.GetValue(__instance) >= 2f)))
+				{
+					if (NewBaldAI.Instance.UseIfExists(Items.Bsoda))
+					{
+						Item bsod = GameObject.Instantiate<Item>(BaldiUsableItems.ItemStuffs.Find(x => x.itemType == Items.Bsoda).item);
+						bsod.transform.name = "BALDSODA";
+						bsod.Use(NewBaldAI.Instance.FakePlayer);
+					}
+				}
+			}
 
             //if the player is really far away, eat a zesty bar
             if (Vector3.Distance(__instance.gameObject.transform.position, ___navigator.CurrentDestination) > 80f)
@@ -307,25 +355,41 @@ namespace BaldiCanUseItems
                 }
             }
 
-            foreach (NPC npc in __instance.ec.Npcs)
-            {
-                if (npc.Character == Character.Sweep)
-                {
-                    __instance.looker.Raycast(npc.transform, __instance.ec.MaxRaycast, out bool sighted);
-                    float distance = 0f;
-                    if (NewBaldAI.Instance.CurrentVisiblePlayer != null)
-                    {
-                        distance = Vector3.Distance(NewBaldAI.Instance.CurrentVisiblePlayer.transform.position, npc.transform.position);
-                    }
-                    if (sighted && (Vector3.Distance(__instance.transform.position, npc.transform.position) < 100f) && !(distance < 40f) && !NewBaldAI.Instance.HasBootsOn)
-                    {
-                        if (NewBaldAI.Instance.UseIfExists(Items.Boots))
-                        {
-                            NewBaldAI.Instance.PutOnBootsNOW();
-                        }
-                    }
-                }
-            }
+			foreach (NPC npc in __instance.ec.Npcs)
+			{
+				if (npc.Character == Character.Sweep)
+				{
+					__instance.looker.Raycast(npc.transform, __instance.ec.MaxRaycast, out bool sighted);
+					float distance = 0f;
+					if (NewBaldAI.Instance.CurrentVisiblePlayer != null)
+					{
+						distance = Vector3.Distance(NewBaldAI.Instance.CurrentVisiblePlayer.transform.position, npc.transform.position);
+					}
+					if (sighted && (Vector3.Distance(__instance.transform.position, npc.transform.position) < 100f) && !(distance < 40f) && !NewBaldAI.Instance.HasBootsOn)
+					{
+						if (NewBaldAI.Instance.UseIfExists(Items.Boots))
+						{
+							NewBaldAI.Instance.PutOnBootsNOW();
+						}
+					}
+				}
+				if (npc.Character == Character.LookAt) //pretty much, if baldi sees test, and can see the player, assume that the player can also see the test, and thus use the chalk thingy to prevent the test from freezing baldi
+				{
+					__instance.looker.Raycast(npc.transform, __instance.ec.MaxRaycast, out bool sighted);
+					if (NewBaldAI.Instance.CurrentVisiblePlayer != null && sighted)
+					{
+						if (NewBaldAI.Instance.UseIfExists(Items.ChalkEraser))
+						{
+							Item chalk = GameObject.Instantiate<Item>(BaldiUsableItems.ItemStuffs.Find(x => x.itemType == Items.ChalkEraser).item);
+							chalk.Use(NewBaldAI.Instance.FakePlayer);
+						}
+					}
+				}
+			}
+
+
+
+
 
             foreach (SodaMachine machine in GameObject.FindObjectsOfType<SodaMachine>())
             {
@@ -343,6 +407,21 @@ namespace BaldiCanUseItems
                             ___audMan.PlayRandomAudio(new SoundObject[3] { BaldiUsableItems.soundobjs["bal_purchase1"], BaldiUsableItems.soundobjs["bal_purchase2"], BaldiUsableItems.soundobjs["bal_purchase3"] });
                         }
                     }
+                }
+            }
+
+            foreach (SwingDoor door in GameObject.FindObjectsOfType<SwingDoor>())
+            {
+                if ((Vector3.Distance(__instance.transform.position, door.audMan.transform.position) < 25f))
+                {
+					if (door.locked)
+					{
+						if (NewBaldAI.Instance.UseIfExists(Items.DetentionKey))
+						{
+							door.Unlock();
+							//NewBaldAI.Instance.PauseBaldiWithoutBloat(1f, false);
+						}
+					}
                 }
             }
 
