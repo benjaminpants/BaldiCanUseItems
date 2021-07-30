@@ -25,8 +25,9 @@ namespace BaldiCanUseItems
 		RandomEveryDeath,
 		Constant,
 		Collect,
-		RandomEveryUse,
-		Always
+		RandomPerFloor,
+		Always,
+		Cycle
 	}
 
 
@@ -41,18 +42,55 @@ namespace BaldiCanUseItems
 
 		public static BaldMode Mode = BaldMode.Always;
 
+		public void SetAlways(Name_MenuObject yes)
+		{
+			Mode = BaldMode.Always;
+			NameMenuManager.AllowContinue(true);
+		}
 
-        void Awake()
-        {
-            Harmony harmony = new Harmony("mtm101.rulerp.bbplus.baldiusesitems");
-            harmony.PatchAll();
-            AudioClip clip = FaDe.Unity.ResourceManager.Get("bal_purchase1.ogg");
-            AudioClip clip2 = FaDe.Unity.ResourceManager.Get("bal_purchase2.ogg");
-            AudioClip clip3 = FaDe.Unity.ResourceManager.Get("bal_purchase3.ogg");
-            soundobjs.Add("bal_purchase1", CreateSoundObject(clip, "BAL_CUST_PURCHASE1", SoundType.Voice, Color.green));
-            soundobjs.Add("bal_purchase2", CreateSoundObject(clip2, "BAL_CUST_PURCHASE2", SoundType.Voice, Color.green));
-            soundobjs.Add("bal_purchase3", CreateSoundObject(clip3, "BAL_CUST_PURCHASE3", SoundType.Voice, Color.green));
-        }
+		public void SetROD(Name_MenuObject yes)
+		{
+			Mode = BaldMode.RandomEveryDeath;
+			NameMenuManager.AllowContinue(true);
+		}
+
+		public void SetRPF(Name_MenuObject yes)
+		{
+			Mode = BaldMode.RandomPerFloor;
+			NameMenuManager.AllowContinue(true);
+		}
+
+		public void SetCycle(Name_MenuObject yes)
+		{
+			Mode = BaldMode.Cycle;
+			NameMenuManager.AllowContinue(true);
+		}
+
+
+		void Awake()
+		{
+			Harmony harmony = new Harmony("mtm101.rulerp.bbplus.baldiusesitems");
+			AudioClip clip = FaDe.Unity.ResourceManager.Get("bal_purchase1.ogg");
+			AudioClip clip2 = FaDe.Unity.ResourceManager.Get("bal_purchase2.ogg");
+			AudioClip clip3 = FaDe.Unity.ResourceManager.Get("bal_purchase3.ogg");
+			soundobjs.Add("bal_purchase1", CreateSoundObject(clip, "BAL_CUST_PURCHASE1", SoundType.Voice, Color.green));
+			soundobjs.Add("bal_purchase2", CreateSoundObject(clip2, "BAL_CUST_PURCHASE2", SoundType.Voice, Color.green));
+			soundobjs.Add("bal_purchase3", CreateSoundObject(clip3, "BAL_CUST_PURCHASE3", SoundType.Voice, Color.green));
+
+
+			NameMenuManager.AddPreStartPage("mandatoryitemconfig", true);
+			List<Name_MenuObject> Objects = new List<Name_MenuObject>();
+			Objects.Add(new Name_MenuGeneric("setalways", "Always", SetAlways));
+			Objects.Add(new Name_MenuGeneric("setrod", "Randomize On Death", SetROD));
+			Objects.Add(new Name_MenuGeneric("setrpf", "Randomize Per Seed", SetRPF));
+			Objects.Add(new Name_MenuGeneric("setcycle", "Cycle", SetCycle));
+			NameMenuManager.AddToPageBulk("mandatoryitemconfig", Objects);
+
+
+			harmony.PatchAll();
+
+
+		}
 
 
         public static SoundObject CreateSoundObject(AudioClip clip, string subtitle, SoundType type, Color color, float sublength = -1f)

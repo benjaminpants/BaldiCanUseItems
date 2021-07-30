@@ -57,7 +57,11 @@ namespace BaldiCanUseItems
 
 		public bool QueueingAction = false;
 
-        public void Awake()
+		public List<Items> ItemTypes = new List<Items> { Items.Bsoda, Items.GrapplingHook, Items.Quarter, Items.ZestyBar, Items.PrincipalWhistle, Items.Teleporter, Items.Scissors, Items.Boots, Items.DoorLock, Items.DetentionKey };
+
+		public System.Random rng;
+
+		public void Awake()
         {
             MyBaldi = gameObject.GetComponent<Baldi>();
             if (MyBaldi == null)
@@ -69,12 +73,27 @@ namespace BaldiCanUseItems
                 GameObject.Destroy(Instance);
             }
             Instance = this;
-            AddItem(Items.Quarter,5);
-            AddItem(Items.ZestyBar,5);
-            AddItem(Items.GrapplingHook);
-            AddItem(Items.DoorLock);
-            AddItem(Items.Bsoda);
-            ItemDisplayerObject = GameObject.Instantiate(Resources.FindObjectsOfTypeAll<Pickup>()[0].itemSprite.gameObject);
+			
+			if (BaldiUsableItems.Mode == BaldMode.RandomEveryDeath || BaldiUsableItems.Mode == BaldMode.RandomPerFloor || BaldiUsableItems.Mode == BaldMode.Cycle)
+			{
+				if (BaldiUsableItems.Mode == BaldMode.RandomEveryDeath)
+				{
+					rng = new System.Random();
+				}
+				else
+				{
+					rng = new System.Random(Singleton<CoreGameManager>.Instance.Seed());
+				}
+				for (int i = 0; i < 5; i++)
+				{
+					Items tem = ItemTypes[rng.Next(0, ItemTypes.Count - 1)];
+					UnityEngine.Debug.Log(tem.ToString());
+					AddItem(tem);
+				}
+			}
+			
+			
+			ItemDisplayerObject = GameObject.Instantiate(Resources.FindObjectsOfTypeAll<Pickup>()[0].itemSprite.gameObject);
             ItemDisplayerObject.transform.parent = MyBaldi.transform;
             ItemDisplayer = ItemDisplayerObject.GetComponent<SpriteRenderer>();
             ItemDisplayer.transform.localPosition = new Vector3(0.2f, 3, 0f);
@@ -100,10 +119,6 @@ namespace BaldiCanUseItems
 			pm.am = MyBaldi.GetComponent<ActivityModifier>();
 			FakePlayer.plm = pm;
 
-
-
-
-			Singleton<CoreGameManager>.Instance.disablePause = false;
 
             UnityEngine.Debug.Log("NewBaldi AI success!");
         }
@@ -181,6 +196,10 @@ namespace BaldiCanUseItems
                     if (Uses[i] == 0)
                     {
                         Inventory[i] = Items.None;
+						if (BaldiUsableItems.Mode == BaldMode.Cycle)
+						{
+							AddItem(ItemTypes[rng.Next(0, ItemTypes.Count - 1)]);
+						}
                     }
                     else
                     {
