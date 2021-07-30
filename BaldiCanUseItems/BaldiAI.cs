@@ -45,8 +45,6 @@ namespace BaldiCanUseItems
 
         public float DisplayItemTimer;
 
-		public float CooldownTimer;
-
 		public float BootsTimer;
 
 		public float UnknownLocalTimer;
@@ -56,6 +54,8 @@ namespace BaldiCanUseItems
         public PlayerManager FakePlayer;
 
 		public Item ItemToWaitFor;
+
+		public bool QueueingAction = false;
 
         public void Awake()
         {
@@ -149,22 +149,30 @@ namespace BaldiCanUseItems
 			return til.Count;
 		}
 
-		void Update()
-		{
-			if (MyBaldi == null) return;
-			CooldownTimer -= Time.deltaTime * MyBaldi.ec.NpcTimeScale;
 
+
+		public IEnumerator QueueCut(float time, Gum gum)
+		{
+			while (time > 0f)
+			{
+				time -= Time.deltaTime * MyBaldi.ec.EnvironmentTimeScale;
+				yield return null;
+			}
+			gum.Cut();
+			QueueingAction = false;
+			yield break;
 		}
 
 
-
-        public bool UseIfExists(Items type)
+		public bool UseIfExists(Items type)
         {
-			if (CooldownTimer >= 0f) return false;
-			CooldownTimer = 0.5f;
 			if (DisplayItemTimer != 0f) return false;
 			if (ItemToWaitFor != null) return false;
-			if (BaldiUsableItems.Mode == BaldMode.Always) return true;
+			if (BaldiUsableItems.Mode == BaldMode.Always)
+			{
+				DisplayItem(type, 2f);
+				return true;
+			}
             for (int i = 0; i < Inventory.Length; i++)
             {
                 if (Inventory[i] == type)
@@ -283,7 +291,9 @@ namespace BaldiCanUseItems
 
 		private static readonly FieldInfo _usesLeft = AccessTools.Field(typeof(SodaMachine), "usesLeft");
 
-        static bool Prefix(Baldi __instance, ref bool ___controlOverride, ref Navigator ___navigator, ref bool ___eatingApple, ref bool ___paused, ref float ___speed, ref float ___nextSlapDistance, ref float ___extraAnger, ref AudioManager ___audMan, ref WeightedSoundObject[] ___eatSounds)
+		private static readonly FieldInfo _cut = AccessTools.Field(typeof(Gum), "cut");
+
+		static bool Prefix(Baldi __instance, ref bool ___controlOverride, ref Navigator ___navigator, ref bool ___eatingApple, ref bool ___paused, ref float ___speed, ref float ___nextSlapDistance, ref float ___extraAnger, ref AudioManager ___audMan, ref WeightedSoundObject[] ___eatSounds)
         {
             if (!___controlOverride)
             {
@@ -315,7 +325,27 @@ namespace BaldiCanUseItems
 
             }
 
-			if (NewBaldAI.Instance.UnknownLocalTimer > 60f) //please help i have literally no idea where the player is yolo
+
+
+			if (!___eatingApple && !___paused)
+			{
+				___nextSlapDistance += ___speed * Time.deltaTime * __instance.ec.NpcTimeScale;
+			}
+
+
+			if (___extraAnger > 0f)
+			{
+				__instance.GetAngry(0f);
+				___extraAnger -= Time.deltaTime * __instance.extraAngerDrain;
+				if (___extraAnger < 0f)
+				{
+					___extraAnger = 0f;
+				}
+			}
+
+			if (___controlOverride) return false; //if he is being manually controlled don't do the item logic stupid
+
+			if (NewBaldAI.Instance.UnknownLocalTimer > 60f) //please help i have literally no idea where the player is time to teleport
 			{
 				NewBaldAI.Instance.UnknownLocalTimer = 0f;
 				if (NewBaldAI.Instance.UseIfExists(Items.Teleporter))
@@ -328,7 +358,7 @@ namespace BaldiCanUseItems
 
 
 
-			if (NewBaldAI.Instance.CurrentVisiblePlayer != null)
+			if (NewBaldAI.Instance.CurrentVisiblePlayer != null) // bsoda
 			{
 				int neighbors = NewBaldAI.Instance.GetNavCount(new IntVector2((int)(NewBaldAI.Instance.CurrentVisiblePlayer.transform.position.x / 10f), (int)(NewBaldAI.Instance.CurrentVisiblePlayer.transform.position.y / 10f)));
 				if (neighbors > 2 && (((float)_anger.GetValue(__instance) >= 2f)))
@@ -345,7 +375,7 @@ namespace BaldiCanUseItems
             //if the player is really far away, eat a zesty bar
             if (Vector3.Distance(__instance.gameObject.transform.position, ___navigator.CurrentDestination) > 80f)
             {
-                if (!(___extraAnger >= 0f))
+                if (___extraAnger <= 0f)
                 {
                     if (NewBaldAI.Instance.UseIfExists(Items.ZestyBar))
                     {
@@ -355,7 +385,7 @@ namespace BaldiCanUseItems
                 }
             }
 
-            if (NewBaldAI.Instance.CurrentVisiblePlayer != null)
+            if (NewBaldAI.Instance.CurrentVisiblePlayer != null) //principal whistle logic
             {
                 if (NewBaldAI.Instance.CurrentVisiblePlayer.Disobeying && NewBaldAI.Instance.CurrentVisiblePlayer.ruleBreak != "Running")
                 {
@@ -375,11 +405,12 @@ namespace BaldiCanUseItems
 
             foreach (Gum gum in GameObject.FindObjectsOfType<Gum>())
             {
-                if ((ActivityModifier)_actMod.GetValue(gum) == __instance.GetComponent<ActivityModifier>())
+                if ((ActivityModifier)_actMod.GetValue(gum) == __instance.GetComponent<ActivityModifier>() && !NewBaldAI.Instance.QueueingAction && !((bool)_cut.GetValue(gum)))
                 {
                     if (NewBaldAI.Instance.UseIfExists(Items.Scissors))
                     {
-                        gum.Cut();
+						NewBaldAI.Instance.QueueingAction = true;
+						NewBaldAI.Instance.StartCoroutine(NewBaldAI.Instance.QueueCut(1f,gum));
                     }
                 }
             }
@@ -426,7 +457,7 @@ namespace BaldiCanUseItems
                 {
                     // __instance.looker.Raycast(machine.gameObject.transform, __instance.ec.MaxRaycast, out bool sighted);
                     bool sighted = true;
-                    if (sighted && (Vector3.Distance(__instance.transform.position, machine.gameObject.GetComponent<BoxCollider>().transform.position) < 15f) && ((int)_usesLeft.GetValue(machine) != 0))
+                    if (sighted && (Vector3.Distance(__instance.transform.position, machine.gameObject.GetComponent<BoxCollider>().transform.position) < 15f) && ((int)_usesLeft.GetValue(machine) != 0) && BaldiUsableItems.Mode != BaldMode.Always)
                     {
                         if (NewBaldAI.Instance.UseIfExists(Items.Quarter))
                         {
@@ -481,21 +512,6 @@ namespace BaldiCanUseItems
                 }
             }
 
-            if (!___eatingApple && !___paused)
-            {
-                ___nextSlapDistance += ___speed * Time.deltaTime * __instance.ec.NpcTimeScale;
-            }
-
-
-            if (___extraAnger > 0f)
-            {
-                __instance.GetAngry(0f);
-                ___extraAnger -= Time.deltaTime * __instance.extraAngerDrain;
-                if (___extraAnger < 0f)
-                {
-                    ___extraAnger = 0f;
-                }
-            }
 
 
 
