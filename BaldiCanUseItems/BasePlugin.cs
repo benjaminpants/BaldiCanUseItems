@@ -19,12 +19,28 @@ using FaDe; //haha funny mod menu dependency
 
 namespace BaldiCanUseItems
 {
-    [BepInPlugin("mtm101.rulerp.bbplus.baldiusesitems", "Baldi Can Use Items", "0.0.0.0")]
+
+	public enum BaldMode
+	{
+		RandomEveryDeath,
+		Constant,
+		Collect,
+		RandomEveryUse,
+		Always
+	}
+
+
+
+	[BepInPlugin("mtm101.rulerp.bbplus.baldiusesitems", "Baldi Can Use Items", "0.0.0.0")]
     public class BaldiUsableItems : BaseUnityPlugin
     {
         public static readonly List<ItemObject> ItemStuffs = Resources.FindObjectsOfTypeAll<ItemObject>().ToList();
 
         public static Dictionary<string, SoundObject> soundobjs = new Dictionary<string, SoundObject>();
+
+
+		public static BaldMode Mode = BaldMode.Always;
+
 
         void Awake()
         {

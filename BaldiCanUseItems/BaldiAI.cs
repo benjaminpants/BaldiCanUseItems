@@ -45,6 +45,8 @@ namespace BaldiCanUseItems
 
         public float DisplayItemTimer;
 
+		public float CooldownTimer;
+
 		public float BootsTimer;
 
 		public float UnknownLocalTimer;
@@ -52,6 +54,8 @@ namespace BaldiCanUseItems
 		public bool HasBootsOn = true;
 
         public PlayerManager FakePlayer;
+
+		public Item ItemToWaitFor;
 
         public void Awake()
         {
@@ -68,7 +72,7 @@ namespace BaldiCanUseItems
             AddItem(Items.Quarter,5);
             AddItem(Items.ZestyBar,5);
             AddItem(Items.GrapplingHook);
-            AddItem(Items.PrincipalWhistle,5);
+            AddItem(Items.DoorLock);
             AddItem(Items.Bsoda);
             ItemDisplayerObject = GameObject.Instantiate(Resources.FindObjectsOfTypeAll<Pickup>()[0].itemSprite.gameObject);
             ItemDisplayerObject.transform.parent = MyBaldi.transform;
@@ -138,10 +142,29 @@ namespace BaldiCanUseItems
             }
         }
 
+		public int GetNavCount(IntVector2 pos)
+		{
+			List<TileController> til = new List<TileController>();
+			MyBaldi.ec.GetNavNeighbors(MyBaldi.ec.ClosestTileFromPos((pos)), til, PathType.Nav);
+			return til.Count;
+		}
+
+		void Update()
+		{
+			if (MyBaldi == null) return;
+			CooldownTimer -= Time.deltaTime * MyBaldi.ec.NpcTimeScale;
+
+		}
+
+
 
         public bool UseIfExists(Items type)
         {
-            if (DisplayItemTimer != 0f) return false;
+			if (CooldownTimer >= 0f) return false;
+			CooldownTimer = 0.5f;
+			if (DisplayItemTimer != 0f) return false;
+			if (ItemToWaitFor != null) return false;
+			if (BaldiUsableItems.Mode == BaldMode.Always) return true;
             for (int i = 0; i < Inventory.Length; i++)
             {
                 if (Inventory[i] == type)
@@ -275,7 +298,14 @@ namespace BaldiCanUseItems
                 }
                 else
                 {
-					NewBaldAI.Instance.UnknownLocalTimer += Time.deltaTime * __instance.ec.NpcTimeScale;
+					if (NewBaldAI.Instance.CurrentVisiblePlayer == null)
+					{
+						NewBaldAI.Instance.UnknownLocalTimer += Time.deltaTime * __instance.ec.NpcTimeScale;
+					}
+					else
+					{
+						NewBaldAI.Instance.UnknownLocalTimer = 0f;
+					}
 					if (!___navigator.HasDestination)
 					{
 						___navigator.WanderRandom();
@@ -285,12 +315,13 @@ namespace BaldiCanUseItems
 
             }
 
-			if (NewBaldAI.Instance.UnknownLocalTimer > 15f) //please help i have literally no idea where the player is yolo
+			if (NewBaldAI.Instance.UnknownLocalTimer > 60f) //please help i have literally no idea where the player is yolo
 			{
 				NewBaldAI.Instance.UnknownLocalTimer = 0f;
 				if (NewBaldAI.Instance.UseIfExists(Items.Teleporter))
 				{
 					Item tele = GameObject.Instantiate<Item>(BaldiUsableItems.ItemStuffs.Find(x => x.itemType == Items.Teleporter).item);
+					NewBaldAI.Instance.ItemToWaitFor = tele;
 					tele.Use(NewBaldAI.Instance.FakePlayer);
 				}
 			}
@@ -299,9 +330,7 @@ namespace BaldiCanUseItems
 
 			if (NewBaldAI.Instance.CurrentVisiblePlayer != null)
 			{
-				List<TileController> til = new List<TileController>();
-				__instance.ec.GetNavNeighbors(__instance.ec.ClosestTileFromPos((new IntVector2((int)(NewBaldAI.Instance.CurrentVisiblePlayer.transform.position.x / 10f), (int)(NewBaldAI.Instance.CurrentVisiblePlayer.transform.position.y / 10f)))),til, PathType.Nav);
-				int neighbors = til.Count;
+				int neighbors = NewBaldAI.Instance.GetNavCount(new IntVector2((int)(NewBaldAI.Instance.CurrentVisiblePlayer.transform.position.x / 10f), (int)(NewBaldAI.Instance.CurrentVisiblePlayer.transform.position.y / 10f)));
 				if (neighbors > 2 && (((float)_anger.GetValue(__instance) >= 2f)))
 				{
 					if (NewBaldAI.Instance.UseIfExists(Items.Bsoda))
@@ -422,6 +451,23 @@ namespace BaldiCanUseItems
 							//NewBaldAI.Instance.PauseBaldiWithoutBloat(1f, false);
 						}
 					}
+					else
+					{
+						if (NewBaldAI.Instance.CurrentVisiblePlayer != null)
+						{
+							int neighbors = NewBaldAI.Instance.GetNavCount(new IntVector2((int)(NewBaldAI.Instance.CurrentVisiblePlayer.transform.position.x / 10f), (int)(NewBaldAI.Instance.CurrentVisiblePlayer.transform.position.y / 10f)));
+							int myneighbors = NewBaldAI.Instance.GetNavCount(new IntVector2((int)(__instance.transform.position.x / 10f), (int)(__instance.transform.position.y / 12f)));
+							bool isinhall = __instance.ec.ClosestTileFromPos(new IntVector2((int)(__instance.transform.position.x / 10f), (int)(__instance.transform.position.y / 12f))).room.type == RoomType.Hall;
+							if (neighbors < 3 && myneighbors > 2 && isinhall) //oddly specific, but pretty much, if the player can only go forward and backward, and there is a swinging door next to baldi and he has more directions available to him, lock the door.
+							{
+								if (NewBaldAI.Instance.UseIfExists(Items.DoorLock))
+								{
+									door.LockTimed(30f);
+									//NewBaldAI.Instance.PauseBaldiWithoutBloat(1f, false);
+								}
+							}
+						}
+					}
                 }
             }
 
@@ -429,8 +475,9 @@ namespace BaldiCanUseItems
             {
                 if (NewBaldAI.Instance.UseIfExists(Items.GrapplingHook))
                 {
-                    Item grapple = GameObject.Instantiate<Item>(BaldiUsableItems.ItemStuffs.Find(x => x.itemType == Items.GrapplingHook).item);
-                    grapple.Use(NewBaldAI.Instance.FakePlayer);
+					Item grapple = GameObject.Instantiate<Item>(BaldiUsableItems.ItemStuffs.Find(x => x.itemType == Items.GrapplingHook).item);
+					NewBaldAI.Instance.ItemToWaitFor = grapple;
+					grapple.Use(NewBaldAI.Instance.FakePlayer);
                 }
             }
 
