@@ -11,7 +11,6 @@ using UnityEngine;
 using UnityEngine.SceneManagement;
 using HarmonyLib;
 using BepInEx.Configuration;
-using BBPlusNameAPI;
 using System.Collections.Generic;
 using System.Linq;
 

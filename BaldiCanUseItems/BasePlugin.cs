@@ -11,7 +11,7 @@ using UnityEngine;
 using UnityEngine.SceneManagement;
 using HarmonyLib;
 using BepInEx.Configuration;
-using BBPlusNameAPI;
+using MTM101BaldAPI.NameMenu;
 using System.Collections.Generic;
 using System.Linq;
 using FaDe; //haha funny mod menu dependency
@@ -42,25 +42,25 @@ namespace BaldiCanUseItems
 
 		public static BaldMode Mode = BaldMode.Always;
 
-		public void SetAlways(Name_MenuObject yes)
+		public void SetAlways(MenuObject yes)
 		{
 			Mode = BaldMode.Always;
 			NameMenuManager.AllowContinue(true);
 		}
 
-		public void SetROD(Name_MenuObject yes)
+		public void SetROD(MenuObject yes)
 		{
 			Mode = BaldMode.RandomEveryDeath;
 			NameMenuManager.AllowContinue(true);
 		}
 
-		public void SetRPF(Name_MenuObject yes)
+		public void SetRPF(MenuObject yes)
 		{
 			Mode = BaldMode.RandomPerFloor;
 			NameMenuManager.AllowContinue(true);
 		}
 
-		public void SetCycle(Name_MenuObject yes)
+		public void SetCycle(MenuObject yes)
 		{
 			Mode = BaldMode.Cycle;
 			NameMenuManager.AllowContinue(true);
@@ -79,11 +79,11 @@ namespace BaldiCanUseItems
 
 
 			NameMenuManager.AddPreStartPage("mandatoryitemconfig", true);
-			List<Name_MenuObject> Objects = new List<Name_MenuObject>();
-			Objects.Add(new Name_MenuGeneric("setalways", "Always", SetAlways));
-			Objects.Add(new Name_MenuGeneric("setrod", "Randomize On Death", SetROD));
-			Objects.Add(new Name_MenuGeneric("setrpf", "Randomize Per Seed", SetRPF));
-			Objects.Add(new Name_MenuGeneric("setcycle", "Cycle", SetCycle));
+			List<MenuObject> Objects = new List<MenuObject>();
+			Objects.Add(new MenuGeneric("setalways", "Always", SetAlways));
+			Objects.Add(new MenuGeneric("setrod", "Randomize On Death", SetROD));
+			Objects.Add(new MenuGeneric("setrpf", "Randomize Per Seed", SetRPF));
+			Objects.Add(new MenuGeneric("setcycle", "Cycle", SetCycle));
 			NameMenuManager.AddToPageBulk("mandatoryitemconfig", Objects);
 
 

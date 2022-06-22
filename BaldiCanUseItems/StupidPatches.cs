@@ -11,7 +11,6 @@ using UnityEngine;
 using UnityEngine.SceneManagement;
 using HarmonyLib;
 using BepInEx.Configuration;
-using BBPlusNameAPI;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -41,17 +40,6 @@ namespace BaldiCanUseItems
         }
     }
 
-
-	[HarmonyPatch(typeof(PlayerManager))]
-	[HarmonyPatch("Awake")]
-	class PlayerManAwakePatch
-	{
-		static bool Prefix(PlayerManager __instance)
-		{
-			return __instance.tag == "Player";
-		}
-	}
-
 	[HarmonyPatch(typeof(PlayerManager))]
 	[HarmonyPatch("RuleBreak")]
 	class PlayerManRuleBreakPatch
@@ -67,30 +55,10 @@ namespace BaldiCanUseItems
 	}
 
 	[HarmonyPatch(typeof(PlayerMovement))]
-	[HarmonyPatch("Awake")]
-	class PlayerMoveAwakePatch
-	{
-		static bool Prefix(PlayerMovement __instance)
-		{
-			return __instance.pm != null;
-		}
-	}
-
-	[HarmonyPatch(typeof(PlayerMovement))]
 	[HarmonyPatch("Update")]
 	class PlayerMoveUpdatePatch
 	{
 		static bool Prefix(PlayerMovement __instance)
-		{
-			return __instance.pm != null;
-		}
-	}
-
-	[HarmonyPatch(typeof(PlayerClick))]
-	[HarmonyPatch("Awake")]
-	class PlayerClickAwakePatch
-	{
-		static bool Prefix(PlayerClick __instance)
 		{
 			return __instance.pm != null;
 		}

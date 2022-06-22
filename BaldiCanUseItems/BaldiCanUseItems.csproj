@@ -11,12 +11,6 @@
     <Reference Include="Assembly-CSharp">
       <HintPath>..\Dependencies\Assembly-CSharp.dll</HintPath>
     </Reference>
-    <Reference Include="BBLangExtender">
-      <HintPath>..\Dependencies\BBLangExtender.dll</HintPath>
-    </Reference>
-    <Reference Include="BBPlusNameAPI">
-      <HintPath>..\Dependencies\BBPlusNameAPI.dll</HintPath>
-    </Reference>
     <Reference Include="BepInEx">
       <HintPath>..\Dependencies\BepInEx.dll</HintPath>
     </Reference>
@@ -49,6 +43,9 @@
     </Reference>
     <Reference Include="MonoMod.Utils">
       <HintPath>..\Dependencies\MonoMod.Utils.dll</HintPath>
+    </Reference>
+    <Reference Include="MTM101BMDE">
+      <HintPath>..\Dependencies\MTM101BMDE.dll</HintPath>
     </Reference>
     <Reference Include="Rewired_Core">
       <HintPath>..\Dependencies\Rewired_Core.dll</HintPath>
